@@ -8,17 +8,11 @@
 
 static void
 process(int r, int g, int b, int rows, int cols){
-  /* void the parameters to discard compilation unused warnings */
-  (void)r;
-  (void)g;
-  (void)b;
-  (void)rows;
-  (void)cols;
 
   printf("P3\n%d %d 255\n",cols, rows);
 
-  for (int i = 0; i < rows; i++) {
-    for (int j = 0; j < cols; j++) {
+  for (int i = 0; i < cols; i++) {
+    for (int j = 0; j < rows; j++) {
       printf("%d %d %d\n", r, g, b);
     }
   }
@@ -40,8 +34,8 @@ main(int argc, char *argv[])
   if (argc != PARAMS+1){
     usage(argv[0]);
   }
-  /* code to modify */
+  // get the inputs and process
   int r=atoi(argv[1]), g=atoi(argv[2]), b=atoi(argv[3]), rows=atoi(argv[4]), cols=atoi(argv[5]);
-  process(r, g, b, cols, rows);
+  process(r, g, b, rows, cols);
   return EXIT_SUCCESS;
 }

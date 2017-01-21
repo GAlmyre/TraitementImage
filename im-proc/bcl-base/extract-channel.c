@@ -1,9 +1,3 @@
-/**
- * @file test1.c
- * @author Vinh-Thong Ta <ta@labri.fr>
- * @brief ???
- */
-
 #include <stdlib.h>
 #include <stdio.h>
 

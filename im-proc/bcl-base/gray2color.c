@@ -1,9 +1,3 @@
-/**
- * @file test1.c
- * @author Vinh-Thong Ta <ta@labri.fr>
- * @brief ???
- */
-
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -12,14 +6,15 @@
 void
 process(char* ims0_name, char* ims1_name, char* ims2_name, char* imd_name){
 
-  pnm ims = pnm_load(ims_name);
-  pnm imd = pnm_new(pnm_get_width(ims), pnm_get_height(ims), PnmRawPpm);
+  pnm imr = pnm_load(ims0_name);
+  pnm img = pnm_load(ims1_name);
+  pnm imb = pnm_load(ims2_name);
 
-  unsigned short *chan = pnm_get_channel(ims, NULL, num);
+  pnm imd = pnm_new(pnm_get_width(imr), pnm_get_height(imr), PnmRawPpm);
 
-  pnm_set_channel(imd, chan, 0);
-  pnm_set_channel(imd, chan, 1);
-  pnm_set_channel(imd, chan, 2);
+  pnm_set_channel(imd, pnm_get_channel(imr, NULL, 0), 0);
+  pnm_set_channel(imd, pnm_get_channel(img, NULL, 1), 1);
+  pnm_set_channel(imd, pnm_get_channel(imb, NULL, 2), 2);
 
   pnm_save(imd, PnmRawPpm, imd_name);
   pnm_free(imd);
@@ -31,7 +26,7 @@ usage (char *s){
   exit(EXIT_FAILURE);
 }
 
-#define PARAM 3
+#define PARAM 4
 int
 main(int argc, char *argv[]){
   if (argc != PARAM+1) usage(argv[0]);
