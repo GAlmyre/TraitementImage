@@ -21,8 +21,27 @@ static void
 test_for_backward(pnm ims, char* name)
 {
   fprintf(stderr, "test_for_backward: ");
-  (void)ims;
-  (void)name;
+
+  int w = pnm_get_width(ims);
+  int h = pnm_get_height(ims);
+  unsigned short* grayImg = pnm_get_channel(ims, NULL, 0);
+  fftw_complex* c_img = forward(h, w, grayImg);
+  unsigned short* res_img = backward(h, w, c_img);
+
+  pnm res = pnm_new(w, h, PnmRawPpm);
+  pnm_set_channel(res, res_img, 0);
+  pnm_set_channel(res, res_img, 1);
+  pnm_set_channel(res, res_img, 2);
+
+  char* new_name = malloc((strlen(name)+3)*sizeof(char));
+  sprintf(new_name, "FB-%s", name);
+  pnm_save(res, PnmRawPpm, new_name);
+
+  free(res);
+  free(c_img);
+  free(grayImg);
+  free(new_name);
+
   fprintf(stderr, "OK\n");
 }
 
@@ -36,8 +55,36 @@ static void
 test_reconstruction(pnm ims, char* name)
 {
   fprintf(stderr, "test_reconstruction: ");
-  (void)ims;
-  (void)name;
+  int w = pnm_get_width(ims);
+  int h = pnm_get_height(ims);
+  unsigned short* grayImg = pnm_get_channel(ims, NULL, 0);
+  fftw_complex* c_img = forward(h, w, grayImg);
+
+  float* as = malloc(h*w*sizeof(float));
+  float* ps = malloc(h*w*sizeof(float));
+
+  freq2spectra(h, w, c_img, as, ps);
+
+  unsigned short* res_img = backward(h, w, c_img);
+
+  spectra2freq(h, w, as, ps, c_img);
+
+  pnm res = pnm_new(w, h, PnmRawPpm);
+  pnm_set_channel(res, res_img, 0);
+  pnm_set_channel(res, res_img, 1);
+  pnm_set_channel(res, res_img, 2);
+
+  char* new_name = malloc((strlen(name)+8)*sizeof(char));
+  sprintf(new_name, "FB-ASPS-%s", name);
+  pnm_save(res, PnmRawPpm, new_name);
+
+  free(res);
+  free(c_img);
+  free(grayImg);
+  free(new_name);
+  free(as);
+  free(ps);
+
   fprintf(stderr, "OK\n");
 }
 
@@ -53,11 +100,13 @@ test_display(pnm ims, char* name)
   fprintf(stderr, "test_display: ");
   (void)ims;
   (void)name;
+
+  
   fprintf(stderr, "OK\n");
 }
 
 /**
- * @brief test the modification of amplitude and phase spectrum and 
+ * @brief test the modification of amplitude and phase spectrum and
  *        construct output images
  * @param pnm ims, the source image
  * @param char* name, the image file name
@@ -72,7 +121,7 @@ test_modification(pnm ims, char* name)
 }
 
 
-static void 
+static void
 run(pnm ims, char* name)
 {
   test_for_backward(ims, name);
@@ -82,14 +131,14 @@ run(pnm ims, char* name)
 }
 
 
-void 
+void
 usage (char *s)
 {
   fprintf(stderr, "Usage: %s <ims> \n", s);
   exit(EXIT_FAILURE);
 }
 
-int 
+int
 main(int argc, char *argv[])
 {
   if (argc != 2)
