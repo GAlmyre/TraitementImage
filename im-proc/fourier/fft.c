@@ -4,6 +4,16 @@
 
 #include "fft.h"
 
+void center(fftw_complex* tab, int h, int w) {
+
+  for (int i = 0; i < h; i++)
+    for (int j = 0; j < w; j++) {
+      if ((j+i)%2 != 0) {
+        tab[i*h+j]=tab[i*h+j]*(-1);
+      }
+    }
+}
+
 fftw_complex
 *forward(int rows, int cols, unsigned short* g_img)
 {
@@ -13,6 +23,8 @@ fftw_complex
   for (int i = 0; i < rows*cols; i++) {
     c_img[i] = g_img[i];
   }
+
+  center(c_img, rows, cols);
 
   // apply fftw from c_img to res
   fftw_complex* res = malloc(rows*cols*sizeof(fftw_complex));
@@ -35,6 +47,8 @@ unsigned short
 
   fftw_plan plan = fftw_plan_dft_2d(rows, cols, freq_repr, tmp, FFTW_BACKWARD, FFTW_ESTIMATE);
   fftw_execute(plan);
+
+  center(tmp, rows, cols);
 
   for (int i = 0; i < rows*cols; i++) {
     res[i] = creal(tmp[i])/(rows*cols);
