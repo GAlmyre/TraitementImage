@@ -25,22 +25,25 @@ test_for_backward(pnm ims, char* name)
 
   int w = pnm_get_width(ims);
   int h = pnm_get_height(ims);
-  unsigned short* grayImg = pnm_get_channel(ims, NULL, 0);
-  fftw_complex* c_img = forward(h, w, grayImg);
-  unsigned short* res_img = backward(h, w, c_img);
-
   pnm res = pnm_new(w, h, PnmRawPpm);
-  pnm_set_channel(res, res_img, 0);
-  pnm_set_channel(res, res_img, 1);
-  pnm_set_channel(res, res_img, 2);
+
+  for (int color = 0; color < 3; color++) {
+
+    unsigned short* grayImg = pnm_get_channel(ims, NULL, color);
+    fftw_complex* c_img = forward(h, w, grayImg);
+    unsigned short* res_img = backward(h, w, c_img);
+
+    pnm_set_channel(res, res_img, color);
+    free(res_img);
+    free(c_img);
+    free(grayImg);
+  }
 
   char* new_name = malloc((strlen(basename(name))+3)*sizeof(char));
   sprintf(new_name, "FB-%s", basename(name));
   pnm_save(res, PnmRawPpm, new_name);
 
   free(res);
-  free(c_img);
-  free(grayImg);
   free(new_name);
 
   fprintf(stderr, "OK\n");
@@ -58,35 +61,36 @@ test_reconstruction(pnm ims, char* name)
   fprintf(stderr, "test_reconstruction: ");
   int w = pnm_get_width(ims);
   int h = pnm_get_height(ims);
-  unsigned short* grayImg = pnm_get_channel(ims, NULL, 0);
-
-  fftw_complex* c_img = forward(h, w, grayImg);
-
-  float* as = malloc(h*w*sizeof(float));
-  float* ps = malloc(h*w*sizeof(float));
-
-  freq2spectra(h, w, c_img, as, ps);
-
-  unsigned short* res_img = backward(h, w, c_img);
-
-  spectra2freq(h, w, as, ps, c_img);
-
   pnm res = pnm_new(w, h, PnmRawPpm);
-  pnm_set_channel(res, res_img, 0);
-  pnm_set_channel(res, res_img, 1);
-  pnm_set_channel(res, res_img, 2);
+
+  for (int color = 0; color < 3; color++) {
+    unsigned short* grayImg = pnm_get_channel(ims, NULL, color);
+
+    fftw_complex* c_img = forward(h, w, grayImg);
+
+    float* as = malloc(h*w*sizeof(float));
+    float* ps = malloc(h*w*sizeof(float));
+
+    freq2spectra(h, w, c_img, as, ps);
+
+    unsigned short* res_img = backward(h, w, c_img);
+
+    spectra2freq(h, w, as, ps, c_img);
+
+    pnm_set_channel(res, res_img, color);
+
+    free(grayImg);
+    free(as);
+    free(ps);
+    free(c_img);
+  }
 
   char* new_name = malloc((strlen(basename(name))+8)*sizeof(char));
   sprintf(new_name, "FB-ASPS-%s", basename(name));
   pnm_save(res, PnmRawPpm, new_name);
 
   free(res);
-  free(c_img);
-  free(grayImg);
   free(new_name);
-  free(as);
-  free(ps);
-
   fprintf(stderr, "OK\n");
 }
 
@@ -142,7 +146,7 @@ test_display(pnm ims, char* name)
   pnm_set_channel(res_as, as_short, 1);
   pnm_set_channel(res_as, as_short, 2);
 
-  char* new_name = malloc((strlen(basename(name))+3)*sizeof(char));
+  char* new_name = malloc((strlen(name)+3)*sizeof(char));
   sprintf(new_name, "AS-%s", basename(name));
   pnm_save(res_as, PnmRawPpm, new_name);
 
@@ -205,6 +209,11 @@ test_modification(pnm ims, char* name)
   as[center-8] = 0.25*a_max;
   as[center+8*w] = 0.25*a_max;
   as[center-8*w] = 0.25*a_max;
+
+  printf("%f\n", ps[center+8]);
+  printf("%f\n", ps[center-8]);
+  printf("%f\n", ps[center+8*w]);
+  printf("%f\n", ps[center-8*w]);
 
   for (int i = 0; i < h*w; i++) {
     as_short[i] = (pow(((as[i])/(a_max)),0.15)*255);
