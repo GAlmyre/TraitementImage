@@ -29,7 +29,7 @@ fftw_complex
   // apply fftw from c_img to res
   fftw_complex* res = malloc(rows*cols*sizeof(fftw_complex));
   fftw_plan plan = fftw_plan_dft_2d(rows, cols, c_img, res, FFTW_FORWARD, FFTW_ESTIMATE);
-  fftw_execute(plan); // CONVERSION UNSIGNED SHORT
+  fftw_execute(plan);
 
   // free memory
   fftw_destroy_plan(plan);
@@ -51,8 +51,11 @@ unsigned short
   center(tmp, rows, cols);
 
   for (int i = 0; i < rows*cols; i++) {
-    if (creal(tmp[i])<0) {
+    if (creal(tmp[i])/(rows*cols)<0) {
       res[i] = 0;
+    }
+    else if ((creal(tmp[i])/(rows*cols))>255) {
+      res[i] = 255;
     }
     else
       res[i] = (unsigned short)(creal(tmp[i])/(rows*cols));

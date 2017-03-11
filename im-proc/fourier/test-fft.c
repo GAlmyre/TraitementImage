@@ -12,7 +12,26 @@
 #include <libgen.h>
 
 #include "fft.h"
+#ifndef M_PI
 #define M_PI           3.14159265358979323846
+#endif
+
+char *gnu_basename(char *path)
+{
+    char *base = strrchr(path, '/');
+    return base ? base+1 : path;
+}
+
+float max_tab(float* tab, int size) {
+  int res = 0;
+  for (int i = 0; i < size; i++) {
+    if (tab[i] > res) {
+      res = tab[i];
+    }
+  }
+  return res;
+}
+
 /**
  * @brief test the forward and backward functions
  * @param pnm ims, the source image
@@ -34,18 +53,18 @@ test_for_backward(pnm ims, char* name)
   pnm_set_channel(res, res_img, 1);
   pnm_set_channel(res, res_img, 2);
 
-  char* new_name = malloc((strlen(basename(name))+3)*sizeof(char));
-  sprintf(new_name, "FB-%s", basename(name));
+  char* new_name = malloc((strlen(gnu_basename(name))+3)*sizeof(char));
+  sprintf(new_name, "FB-%s", gnu_basename(name));
   pnm_save(res, PnmRawPpm, new_name);
 
-  free(res);
+  pnm_free(res);
   free(c_img);
   free(grayImg);
   free(new_name);
+  free(res_img);
 
   fprintf(stderr, "OK\n");
 }
-
 
 /**
  * @brief test image reconstruction from of amplitude and phase spectrum
@@ -76,16 +95,17 @@ test_reconstruction(pnm ims, char* name)
   pnm_set_channel(res, res_img, 1);
   pnm_set_channel(res, res_img, 2);
 
-  char* new_name = malloc((strlen(basename(name))+8)*sizeof(char));
-  sprintf(new_name, "FB-ASPS-%s", basename(name));
+  char* new_name = malloc((strlen(gnu_basename(name))+8)*sizeof(char));
+  sprintf(new_name, "FB-ASPS-%s", gnu_basename(name));
   pnm_save(res, PnmRawPpm, new_name);
 
-  free(res);
+  pnm_free(res);
   free(c_img);
   free(grayImg);
   free(new_name);
   free(as);
   free(ps);
+  free(res_img);
 
   fprintf(stderr, "OK\n");
 }
@@ -117,40 +137,29 @@ test_display(pnm ims, char* name)
   freq2spectra(h, w, c_img, as_float, ps_float);
 
   // find a_max & p_max
-  float a_max = 0;
-  float p_max = 0;
-  for (int i = 0; i < h*w; i++) {
-    if (as_float[i] > a_max) {
-      a_max = as_float[i];
-    }
-    if (ps_float[i] > p_max) {
-      p_max = ps_float[i];
-    }
-  }
+  float a_max = max_tab(as_float, h*w);
+  float p_max = max_tab(ps_float, h*w);
+
   // shrinks the values between 0 and 255
   for (int i = 0; i < h*w; i++) {
     as_short[i] = (pow(((as_float[i])/(a_max)),0.15)*255);
-    if (ps_float[i] < 0 ) {
-      ps_short[i] = 0;
-    }
-    else
-      ps_short[i] = ((ps_float[i])/(p_max))*255;
 
+    ps_short[i] = ((ps_float[i])/(p_max))*255;
   }
 
   pnm_set_channel(res_as, as_short, 0);
   pnm_set_channel(res_as, as_short, 1);
   pnm_set_channel(res_as, as_short, 2);
 
-  char* new_name = malloc((strlen(basename(name))+3)*sizeof(char));
-  sprintf(new_name, "AS-%s", basename(name));
+  char* new_name = malloc((strlen(gnu_basename(name))+3)*sizeof(char));
+  sprintf(new_name, "AS-%s", gnu_basename(name));
   pnm_save(res_as, PnmRawPpm, new_name);
 
   pnm_set_channel(res_ps, ps_short, 0);
   pnm_set_channel(res_ps, ps_short, 1);
   pnm_set_channel(res_ps, ps_short, 2);
 
-  sprintf(new_name, "PS-%s", basename(name));
+  sprintf(new_name, "PS-%s", gnu_basename(name));
   pnm_save(res_ps, PnmRawPpm, new_name);
 
   free(c_img);
@@ -159,8 +168,8 @@ test_display(pnm ims, char* name)
   free(ps_float);
   free(ps_short);
   free(new_name);
-  free(res_as);
-  free(res_ps);
+  pnm_free(res_as);
+  pnm_free(res_ps);
 
   fprintf(stderr, "OK\n");
 }
@@ -190,13 +199,7 @@ test_modification(pnm ims, char* name)
   fftw_complex* c_img = forward(h, w, grayImg);
 
   freq2spectra(h, w, c_img, as, ps);
-
-  float a_max = 0;
-  for (int i = 0; i < h*w; i++) {
-    if (as[i] > a_max) {
-      a_max = as[i];
-    }
-  }
+  float a_max = max_tab(as, h*w);
 
   int center = w*(h/2)+w/2;
 
@@ -222,12 +225,12 @@ test_modification(pnm ims, char* name)
   pnm_set_channel(res, res_img, 1);
   pnm_set_channel(res, res_img, 2);
 
-  char* new_as_name = malloc((strlen(basename(name))+3)*sizeof(char));
-  sprintf(new_as_name, "FAS-%s", basename(name));
+  char* new_as_name = malloc((strlen(gnu_basename(name))+3)*sizeof(char));
+  sprintf(new_as_name, "FAS-%s", gnu_basename(name));
   pnm_save(res_as, PnmRawPpm, new_as_name);
 
-  char* new_name = malloc((strlen(basename(name))+4)*sizeof(char));
-  sprintf(new_name, "FREQ-%s", basename(name));
+  char* new_name = malloc((strlen(gnu_basename(name))+4)*sizeof(char));
+  sprintf(new_name, "FREQ-%s", gnu_basename(name));
   pnm_save(res, PnmRawPpm, new_name);
 
   free(c_img);

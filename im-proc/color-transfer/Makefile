@@ -2,17 +2,15 @@ ROOT=../bcl
 
 CFLAGS=-Wall -Wextra -std=c99 -I$(ROOT)/include
 LDFLAGS=-L$(ROOT)/lib -lbcl
-LDLIBS=-lm -lfftw3 -lbcl
+LDLIBS=-lm -lbcl
 
 OBJ=fft.o
 BIN=\
-	copy\
-	padding\
-	filter
+	color-transfer
 
 all: $(BIN)
 
-padding: fft.o
+color-transfer:
 
 clean:
 	$(RM) $(OBJ) $(BIN) *.ppm
