@@ -6,7 +6,6 @@
  *        'Color Transfer between Images', IEEE CGA special issue on
  *        Applied Perception, Vol 21, No 5, pp 34-41, September - October 2001
  */
-
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -14,6 +13,7 @@
 #include <bcl.h>
 
 #define D 3
+#define NEIGHBORHOOD 5
 
 static float RGB2LMS[D][D] = {
   {0.3811, 0.5783, 0.0402},
@@ -22,6 +22,7 @@ static float RGB2LMS[D][D] = {
 };
 
 static float LMS2LAlphaBeta[D][D] = {
+
   {0.57735, 0.57735, 0.57735},
   {0.408248, 0.408248, -0.816497},
   {0.707107, -0.707107, 0}
@@ -151,11 +152,11 @@ unsigned short ** LabtoRGB(float** lab, int w, int h) {
   return rgb;
 }
 
-void computeLab(float** tab, int size, float* means, float* dev) {
+void computeLab(float** tab, int size, float* means, float* var) {
 
   for (int i = 0; i < D; i++) {
     means[i] = 0;
-    dev[i] = 0;
+    var[i] = 0;
   }
 
   // compute means
@@ -171,13 +172,44 @@ void computeLab(float** tab, int size, float* means, float* dev) {
 
   for (int i = 0; i < size; i++) {
     for (int j = 0; j < D; j++) {
-      dev[j] += (tab[j][i]-means[j])*(tab[j][i]-means[j]);
+      var[j] += (tab[j][i]-means[j])*(tab[j][i]-means[j]);
     }
   }
 
   for (int i = 0; i < D; i++) {
-    dev[i] = sqrt(dev[i]/size);
+    var[i] = dev[i]/size;
   }
+}
+
+float* jittered_sampling(int nb_samples, int w, int h, float** img) {
+
+  float* samples = malloc(nb_samples*sizeof(float));
+
+  int n = w/nb_samples;
+  int m = h/nb_samples;
+  int start[2] = {0,0};
+  srand(time(NULL));
+
+  for (int i = 0; i < nb_samples; i++) {
+    // select a random pixel
+    samples[i] = 0;
+    int x = (int) (rand() / (double)RAND_MAX * (n - 1));
+    int y = (int) (rand() / (double)RAND_MAX * (m - 1));
+
+    x = start[0]+x;
+    y = start[1]+y;
+
+    // convert to 1d space
+    samples[i]=w*y+x;
+
+    // compute neighborhood
+    
+
+    start[0]=(start[0]+n)%w;
+    start[1]=(start[1]+m)%h;
+  }
+
+  return samples;
 }
 
 static void process(char *ims, char *imt, char* imd){
@@ -198,25 +230,30 @@ static void process(char *ims, char *imt, char* imd){
     imd_lab[i] = malloc(h_imt*w_imt*sizeof(float));
   }
 
+  // convert each image to lab space
   float** ims_lab = pnmToLab(ims_pnm, w_ims, h_ims);
   float** imt_lab = pnmToLab(imt_pnm, w_imt, h_imt);
 
+  // luminance remapping
   float ims_means[3];
-  float ims_dev[3];
+  float ims_var[3];
   float imt_means[3];
-  float imt_dev[3];
+  float imt_var[3];
 
-  computeLab(ims_lab, w_ims*h_ims,  ims_means, ims_dev);
-  computeLab(imt_lab, w_imt*h_imt,  imt_means, imt_dev);
+  computeLab(ims_lab, w_ims*h_ims,  ims_means, ims_var);
+  computeLab(imt_lab, w_imt*h_imt,  imt_means, imt_var);
 
-  for (int i = 0; i < h_imt*w_imt; i++) {
-    for (int j = 0; j < D; j++) {
-      imt_lab[j][i] -= imt_means[j];
-      imd_lab[j][i] = (ims_dev[j]/imt_dev[j])*imt_lab[j][i]+ims_means[j];
-    }
-    //printf("lab : %f %f %f\n", imt_lab[0][i], imt_lab[1][i], imt_lab[2][i]);
+  for (int i = 0; i < w_ims*h_ims; i++) {
+    ims_lab[0][i] = (imt_var[0]/ims_var[0])*(ims_lab[0][i]-ims_means[0])+imt_means[0];
   }
 
+  // jittered sampling
+  float* samples = jittered_sampling(200, w_ims, h_ims, ims_lab);
+
+  // compute standard deviation of neighborhood
+
+  // Select the best sample item and transfer his a and b to target
+  // come back to rgb space
   unsigned short** rgb = LabtoRGB(imd_lab, w_imt, h_imt);
 
   pnm_set_channel(imd_pnm, rgb[0], 0);
