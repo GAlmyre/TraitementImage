@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <bcl.h>
+#include <time.h>
 
 #define D 3
 #define NEIGHBORHOOD 5
@@ -79,10 +80,7 @@ float ** pnmToLab(pnm img, int w, int h) {
     // go to LMS space
     float rgb[D] = {ims_short_R[i], ims_short_G[i], ims_short_B[i]};
 
-    //printf("pnmToLab :\nrgb : %f %f %f\n", rgb[0], rgb[1], rgb[2]);
     float* LMSvec = vectorMatrix(rgb, RGB2LMS);
-
-    //printf("lms : %f %f %f \n", LMSvec[0],LMSvec[1],LMSvec[2]);
 
     for (int i = 0; i < D; i++) {
       if (LMSvec[i] < 1) {
@@ -90,10 +88,8 @@ float ** pnmToLab(pnm img, int w, int h) {
       }
       else {
         LMSvec[i] = log10(LMSvec[i]);
-        //printf("OK\n" );
       }
     }
-    //printf("lms_afterLog : %f %f %f \n", LMSvec[0],LMSvec[1],LMSvec[2]);
     L[i] = LMSvec[0];
     M[i] = LMSvec[1];
     S[i] = LMSvec[2];
@@ -101,7 +97,6 @@ float ** pnmToLab(pnm img, int w, int h) {
     // go to lab space
     float lms[D] = {L[i], M[i], S[i]};
     float* LABvec = vectorMatrix(lms, LMS2LAlphaBeta);
-  //  printf("lab : %f %f %f \n", LABvec[0],LABvec[1],LABvec[2]);
     l[i] = LABvec[0];
     a[i] = LABvec[1];
     b[i] = LABvec[2];
@@ -111,8 +106,6 @@ float ** pnmToLab(pnm img, int w, int h) {
     lab[0][i] = l[i];
     lab[1][i] = a[i];
     lab[2][i] = b[i];
-
-    //printf("lab : %f %f %f\n", lab[0][i], lab[1][i], lab[2][i]);
   }
 
   return lab;
@@ -142,11 +135,32 @@ unsigned short ** LabtoRGB(float** lab, int w, int h) {
     float rgbTmp[D] = {L[i], M[i], S[i]};
     float* RGBvec = vectorMatrix(rgbTmp, LMS2RGB);
 
-    rgb[0][i] = fmin(RGBvec[0], 255);
-    rgb[1][i] = fmin(RGBvec[1], 255);
-    rgb[2][i] = fmin(RGBvec[2], 255);
+    rgb[0][i] = RGBvec[0];
+    rgb[1][i] = RGBvec[1];
+    rgb[2][i] = RGBvec[2];
 
-    //printf("rgb : %d %d %d\n", rgb[0][i], rgb[1][i], rgb[2][i]);
+  }
+  // normalize
+  short min = 0;
+  short max = 255;
+  for (int i = 0; i < D; i++) {
+    int maxImg = 0;
+    int minImg = 0;
+    // get the min and max
+    for (int j = 0; j < w*h; j++) {
+      if (rgb[i][j] > maxImg) {
+        maxImg = rgb[i][j];
+      }
+      if (rgb[i][j] < minImg) {
+        minImg = rgb[i][j];
+      }
+    }
+    // compute normalization
+    for (int j = 0; j < w*h; j++) {
+      rgb[i][j] = (((max-min)*1.0))/(((maxImg-minImg)*1.0))*rgb[i][j]+(1.0*(min*maxImg-max*minImg)/1.0*(maxImg-minImg));
+      if (rgb[i][j]>255) {
+      }
+    }
   }
 
   return rgb;
@@ -167,7 +181,6 @@ void computeLab(float** tab, int size, float* means, float* var) {
   }
   for (int i = 0; i < D; i++) {
     means[i] /= size;
-    printf("%f\n", means[i]);
   }
 
   for (int i = 0; i < size; i++) {
@@ -177,22 +190,40 @@ void computeLab(float** tab, int size, float* means, float* var) {
   }
 
   for (int i = 0; i < D; i++) {
-    var[i] = dev[i]/size;
+    var[i] = var[i]/size;
   }
 }
 
-float* jittered_sampling(int nb_samples, int w, int h, float** img) {
+float deviation(int n, float* tab) {
 
-  float* samples = malloc(nb_samples*sizeof(float));
+  float dev = 0;
+  float mean = 0;
+  // means
+  for (int i = 0; i < n; i++) {
+    mean += tab[i];
+  }
+  mean/=n+1;
 
-  int n = w/nb_samples;
-  int m = h/nb_samples;
+  for (int i = 0; i < n; i++) {
+    dev += (tab[i]-mean)*(tab[i]-mean);
+  }
+  return dev = sqrt(dev/(n+1));
+}
+
+float** jittered_sampling(int nb_samples, int w, int h, float** img) {
+
+  float** samples = malloc(3*sizeof(float*));
+  for (int i = 0; i < 3; i++) {
+    samples[i] = malloc(nb_samples*sizeof(float));
+  }
+  int n = w/sqrt(nb_samples);
+  int m = h/sqrt(nb_samples);
   int start[2] = {0,0};
   srand(time(NULL));
 
   for (int i = 0; i < nb_samples; i++) {
     // select a random pixel
-    samples[i] = 0;
+    samples[0][i] = 0;
     int x = (int) (rand() / (double)RAND_MAX * (n - 1));
     int y = (int) (rand() / (double)RAND_MAX * (m - 1));
 
@@ -200,13 +231,31 @@ float* jittered_sampling(int nb_samples, int w, int h, float** img) {
     y = start[1]+y;
 
     // convert to 1d space
-    samples[i]=w*y+x;
+    samples[0][i]=w*y+x;
 
+
+    int nb_pix = 0;
+    float pix[25];
     // compute neighborhood
-    
+    for (int row = y-NEIGHBORHOOD/2; row < y+NEIGHBORHOOD/2; row++) {
+      for (int col = x-NEIGHBORHOOD/2; col < x+NEIGHBORHOOD/2; col++) {
+        if ((y>0 && y<h) && (x>0 && x<w)) {
+          pix[nb_pix] = img[0][w*col+row];
+          nb_pix++;
+        }
+      }
+    }
 
-    start[0]=(start[0]+n)%w;
-    start[1]=(start[1]+m)%h;
+    // compute standard deviation
+    samples[0][i] = (deviation(nb_pix, pix)+img[0][w*y+x])/2;
+    samples[1][i] = img[1][w*y+x];
+    samples[2][i] = img[2][w*y+x];
+
+    start[0]+=n;
+    if (start[0]>w) {
+      start[0]=0;
+      start[1]+=m;
+    }
   }
 
   return samples;
@@ -248,13 +297,40 @@ static void process(char *ims, char *imt, char* imd){
   }
 
   // jittered sampling
-  float* samples = jittered_sampling(200, w_ims, h_ims, ims_lab);
-
-  // compute standard deviation of neighborhood
+  float** samples = jittered_sampling(200, w_ims, h_ims, ims_lab);
 
   // Select the best sample item and transfer his a and b to target
+  for (int i = 0; i < w_imt*h_imt; i++) {
+    int nb_pix = 0;
+    float pix[25];
+    int x =i%w_imt;
+    int y =i/w_imt;
+    // compute neighborhood
+    for (int row = y-NEIGHBORHOOD/2; row < y+NEIGHBORHOOD/2; row++) {
+      for (int col = x-NEIGHBORHOOD/2; col < x+NEIGHBORHOOD/2; col++) {
+        if ((y>0 && y<h_imt) && (x>0 && x<w_imt)) {
+          pix[nb_pix] = imt_lab[0][w_imt*col+row];
+          nb_pix++;
+        }
+      }
+    }
+    // compute standard deviation
+    float dev = deviation(nb_pix, pix);
+    // compute a mean of dev and l
+    float weight = (dev+imt_lab[0][i])/2;
+
+    int res = 0;
+    for (int k = 1; k < 200; k++) {
+      if (fabs(weight - samples[0][k]) < fabs(weight - samples[0][res])) {
+        res = k;
+      }
+    }
+    imt_lab[1][i] = samples[1][res];
+    imt_lab[2][i] = samples[2][res];
+  }
+
   // come back to rgb space
-  unsigned short** rgb = LabtoRGB(imd_lab, w_imt, h_imt);
+  unsigned short** rgb = LabtoRGB(imt_lab, w_imt, h_imt);
 
   pnm_set_channel(imd_pnm, rgb[0], 0);
   pnm_set_channel(imd_pnm, rgb[1], 1);
