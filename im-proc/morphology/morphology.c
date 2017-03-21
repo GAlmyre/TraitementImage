@@ -8,7 +8,9 @@ pnm
 se(int s, int hs){
 
   int size = hs*2+1;
-  int x,y,d,c_x,c_y,r;
+  int x,c_x,c_y;
+  c_x = hs;
+  c_y = hs;
   pnm res = pnm_new(size, size, PnmRawPpm);
 
   switch (s) {
@@ -23,22 +25,11 @@ se(int s, int hs){
       return res;
     break;
     case DIAMOND:
-      // top diamond
-      for (int row = 0; row < hs+1; row++) {
-        for (int col = 0; col < size; col++) {
-          if (col >= hs-row && col <= hs+row) {
+      for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+          if (abs(c_x-i)+abs(c_y-j) <= hs) {
             for (int k = 0; k < 3; k++) {
-              pnm_set_component(res, row, col, k, 255);
-            }
-          }
-        }
-      }
-      // bottom diamond
-      for (int row = 0; row < hs; row++) {
-        for (int col = 0; col < size; col++) {
-          if (col >= hs-row && col <= hs+row) {
-            for (int k = 0; k < 3; k++) {
-              pnm_set_component(res, size-row-1, col, k, 255);
+              pnm_set_component(res, i, j, k, 255);
             }
           }
         }
@@ -46,39 +37,15 @@ se(int s, int hs){
       return res;
     break;
     case DISK:
-      r = hs;
-      c_x = hs;
-      c_y = hs;
-      while (r >= 0) {
-        x = 0;
-        y = r;
-        d = r-1;
-        while (y>=x) {
-          for (int k = 0; k < 3; k++) {
-            pnm_set_component(res, c_x+x, c_y+y, k, 255);
-            pnm_set_component(res, c_x+y, c_y+x, k, 255);
-            pnm_set_component(res, c_x-x, c_y+y, k, 255);
-            pnm_set_component(res, c_x-y, c_y+x, k, 255);
-            pnm_set_component(res, c_x+x, c_y-y, k, 255);
-            pnm_set_component(res, c_x+y, c_y-x, k, 255);
-            pnm_set_component(res, c_x-x, c_y-y, k, 255);
-            pnm_set_component(res, c_x-y, c_y-x, k, 255);
-          }
-          if (d >= 2*x) {
-            d = d-2*x-1;
-            x++;
-          }
-          else if (d < 2*(r-y)) {
-            d = d+2*y-1;
-            y--;
-          }
-          else {
-            d = d+2*(y-x-1);
-            y--;
-            x++;
+      x = hs*hs;
+      for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+          if (abs((c_x-i)*(c_x-i)+(c_y-j)*(c_y-j)) <= x) {
+            for (int k = 0; k < 3; k++) {
+              pnm_set_component(res, i, j, k, 255);
+            }
           }
         }
-        r--;
       }
       return res;
     break;
@@ -156,14 +123,30 @@ se(int s, int hs){
 
 void
 lesser(unsigned short val, unsigned short* min){
-  (void) val;
-  (void) min;
+  if (val < *min) {
+    *min = val;
+  }
 }
 
 void
 greater(unsigned short val, unsigned short* max){
-  (void) val;
-  (void) max;
+  if (val > *max) {
+    *max = val;
+  }
+}
+
+int min(int a, int b) {
+  if (a < b) {
+    return a;
+  }
+  return b;
+}
+
+int max(int a, int b) {
+  if (a > b) {
+    return a;
+  }
+  return b;
 }
 
 void
@@ -173,9 +156,26 @@ process(int s,
 	pnm imd,
 	void (*pf)(unsigned short, unsigned short*))
 {
-  (void) s;
-  (void) hs;
-  (void) ims;
-  (void) imd;
-  (void) pf;
+  pnm shape = se(s, hs);
+  int w = pnm_get_width(ims);
+  int h = pnm_get_height(ims);
+  imd = pnm_new(w, h, PnmRawPpm);
+  unsigned short val;
+  for (int i = 0; i < h; i++) {
+    for (int j = 0; j < w; j++) {
+
+      val = pnm_get_component(ims,i,j,0);
+      for (int row = -1*min(i,hs); row < min(h-i, hs+1); row++) {
+        for (int col = -1*min(j,hs); col < min(w-j, hs+1); col++) {
+
+          if (pnm_get_component(shape, col+hs, row+hs, 0) == 255) {
+            (*pf)(pnm_get_component(ims, i+col, j+row, 0), &val);
+          }
+          pnm_set_component(imd,i,j,0,val);
+          pnm_set_component(imd,i,j,1,val);
+          pnm_set_component(imd,i,j,2,val);
+        }
+      }
+    }
+  }
 }
