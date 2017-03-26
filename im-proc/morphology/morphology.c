@@ -149,12 +149,7 @@ int max(int a, int b) {
   return b;
 }
 
-void
-process(int s,
-	int hs,
-	pnm ims,
-	pnm imd,
-	void (*pf)(unsigned short, unsigned short*))
+void process(int s, int hs, pnm ims, pnm imd, void (*pf)(unsigned short, unsigned short*))
 {
   pnm shape = se(s, hs);
   int w = pnm_get_width(ims);
@@ -163,13 +158,14 @@ process(int s,
   unsigned short val;
   for (int i = 0; i < h; i++) {
     for (int j = 0; j < w; j++) {
-
+      //printf("EKFZJERJGEJGEH\n" );
       val = pnm_get_component(ims,i,j,0);
       for (int row = -1*min(i,hs); row < min(h-i, hs+1); row++) {
         for (int col = -1*min(j,hs); col < min(w-j, hs+1); col++) {
-
+          //printf("1 : row %d   col %d\n", row+hs, col+hs);
           if (pnm_get_component(shape, col+hs, row+hs, 0) == 255) {
-            (*pf)(pnm_get_component(ims, i+col, j+row, 0), &val);
+            //printf("row %d   col %d\n", i+row, j+col);
+            (*pf)(pnm_get_component(ims, j+col, i+row, 0), &val);
           }
           pnm_set_component(imd,i,j,0,val);
           pnm_set_component(imd,i,j,1,val);

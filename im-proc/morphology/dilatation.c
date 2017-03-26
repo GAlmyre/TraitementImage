@@ -3,14 +3,18 @@
 
 #include "morphology.h"
 
+void dilatation(int shape, int hs, pnm ims, pnm imd) {
+  process(shape, hs, ims, imd, greater);
+}
+
 void
 usage(char* s)
 {
-  fprintf(stderr,"%s <se> <hs> <imd>\n",s);
+  fprintf(stderr,"%s <shape> <hs> <ims> <imd>\n",s);
   exit(EXIT_FAILURE);
 }
 
-#define PARAM 3
+#define PARAM 4
 int
 main(int argc, char* argv[])
 {
@@ -19,13 +23,14 @@ main(int argc, char* argv[])
 
   int   shape    = atoi(argv[1]);
   int   hs       = atoi(argv[2]);
-  char* imd_name = argv[3];
+  char* ims_name = argv[3];
+  char* imd_name = argv[4];
 
-  pnm imd = se(shape, hs);
-  if(imd==NULL){
-    fprintf(stderr,"make-se: imd is NULL, exit\n");
-    return EXIT_FAILURE;
-  }
+  pnm ims = pnm_load(ims_name);
+  pnm imd = pnm_new(pnm_get_width(ims),pnm_get_height(ims), PnmRawPpm);
+
+  dilatation(shape, hs, ims, imd);
+
   pnm_save(imd, PnmRawPpm, imd_name);
   pnm_free(imd);
   return EXIT_SUCCESS;
