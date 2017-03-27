@@ -157,17 +157,17 @@ void process(int s, int hs, pnm ims, pnm imd, void (*pf)(unsigned short, unsigne
   unsigned short val;
   for (int i = 0; i < w; i++) {
     for (int j = 0; j < h; j++) {
-      val = pnm_get_component(ims,j,i,0);
-      for (int row = -1*min(j,hs); row < min(h-j, hs+1); row++) {
-        for (int col = -1*min(i,hs); col < min(w-i, hs+1); col++) {
-          if (pnm_get_component(shape, row+hs, col+hs,  0) == 255) {
-            (*pf)(pnm_get_component(ims,j+row, i+col, 0), &val);
+      for (int k = 0; k < 3; k++) {
+        val = pnm_get_component(ims,j,i,k);
+        for (int row = -1*min(j,hs); row < min(h-j, hs+1); row++) {
+          for (int col = -1*min(i,hs); col < min(w-i, hs+1); col++) {
+            if (pnm_get_component(shape, row+hs, col+hs,  k) == 255) {
+              (*pf)(pnm_get_component(ims,j+row, i+col, k), &val);
+            }
           }
+          pnm_set_component(imd,j,i,k,val);
         }
       }
-      pnm_set_component(imd,j,i,0,val);
-      pnm_set_component(imd,j,i,1,val);
-      pnm_set_component(imd,j,i,2,val);
     }
   }
 }

@@ -3,8 +3,10 @@
 
 #include "morphology.h"
 
-void erosion(int shape, int hs, pnm ims, pnm imd) {
-  process(shape, hs, ims, imd, lesser);
+void closing(int shape, int hs, pnm ims, pnm imd) {
+  pnm tmp = pnm_new(pnm_get_width(ims),pnm_get_height(ims), PnmRawPpm);
+  process(shape, hs, ims, tmp, greater);
+  process(shape, hs, tmp, imd, lesser);
 }
 
 void
@@ -29,7 +31,7 @@ main(int argc, char* argv[])
   pnm ims = pnm_load(ims_name);
   pnm imd = pnm_new(pnm_get_width(ims),pnm_get_height(ims), PnmRawPpm);
 
-  erosion(shape, hs, ims, imd);
+  closing(shape, hs, ims, imd);
 
   pnm_save(imd, PnmRawPpm, imd_name);
   pnm_free(imd);
