@@ -48,7 +48,6 @@ process(int n, char* ims_name, char* imd_name)
           ui_pos = tmpImg[row*w+col+w];
 
         laplacien = ui_pos+ui_neg+uj_pos+uj_neg-4*uij;
-        printf("%f\n", laplacien);
         diff[row*w+col] = laplacien;
       }
     }
@@ -56,21 +55,21 @@ process(int n, char* ims_name, char* imd_name)
     for (int row = 0; row < h; row++) {
       for (int col = 0; col < w; col++) {
         tmpImg[row*w+col]+= t*diff[row*w+col];
-        if (tmpImg[row*w+col] > 255) {
-          tmpImg[row*w+col] = 255;
-        }
-
-        if (tmpImg[row*w+col] < 0) {
-          tmpImg[row*w+col] = 0;
-        }
       }
     }
-
-    t+=0.25;
   }
 
   for (int row = 0; row < h; row++) {
     for (int col = 0; col < w; col++) {
+
+      if (tmpImg[row*w+col] > 255) {
+        tmpImg[row*w+col] = 255;
+      }
+
+      if (tmpImg[row*w+col] < 0) {
+        tmpImg[row*w+col] = 0;
+      }
+
       pnm_set_component(imd, col, row, 0, tmpImg[row*w+col]);
       pnm_set_component(imd, col, row, 1, tmpImg[row*w+col]);
       pnm_set_component(imd, col, row, 2, tmpImg[row*w+col]);
