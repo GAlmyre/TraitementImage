@@ -7,7 +7,9 @@ LDLIBS=-lm -lfftw3 -lbcl
 OBJ=fft.o
 BIN=heat-equation\
 	butterworth\
-	median
+	median\
+	anisotropic-diffusion\
+	bilateral
 
 all: $(BIN)
 
